@@ -112,14 +112,54 @@ PyngrokNgrokError: authentication failed
 - Check your OpenAI usage limits
 - Consider upgrading your OpenAI plan
 
-## ❌ Insufficient Quota
+## ❌ Insufficient Quota / Quota Exceeded
 
-**Error:** `insufficient_quota`
+**Error:** 
+```
+'insufficient_quota', 'code': 'insufficient_quota'
+Error code: 429
+```
 
-### Solution:
-1. Check billing: https://platform.openai.com/account/billing
-2. Add payment method if needed
-3. Check usage limits in dashboard
+### What This Means:
+Your OpenAI account has run out of credits/quota. This happens when:
+- You've used all your free credits
+- Your payment method isn't set up
+- You've hit your usage limits
+- Your billing is overdue
+
+### Solution Steps:
+
+1. **Check Your Billing Status:**
+   - Go to: https://platform.openai.com/account/billing
+   - Verify your payment method is active
+   - Check if you have available credits
+
+2. **Add/Update Payment Method:**
+   - Click "Add payment method" or "Update payment method"
+   - Enter your credit card details
+   - Set usage limits to control spending
+
+3. **Check Usage Limits:**
+   - Go to: https://platform.openai.com/account/limits
+   - Review your current limits
+   - Increase limits if needed
+
+4. **Check Usage Dashboard:**
+   - Go to: https://platform.openai.com/usage
+   - See how much you've used
+   - Check remaining credits
+
+5. **Wait for Reset (if on free tier):**
+   - Some free tiers reset monthly
+   - Check when your quota resets
+
+### Temporary Workaround:
+The app can still work for **plot queries (CSV data)** even without PDFs, as those don't require embeddings. However, PDF document queries won't work without API credits.
+
+### Prevention:
+- Set usage limits in your OpenAI dashboard
+- Monitor your usage regularly
+- Use GPT-3.5-turbo instead of GPT-4o if cost is a concern (modify app.py)
 
 ## 🔍 Debugging Tips
 

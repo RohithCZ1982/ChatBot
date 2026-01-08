@@ -1,0 +1,7 @@
+Plot_ID,Area_SqFt,Price,Status,Facing
+PLT-001,2500,1250000,Available,North
+PLT-002,3000,1500000,Sold,East
+PLT-003,2000,1000000,Available,South
+PLT-004,3500,1750000,Available,West
+PLT-005,2800,1400000,Reserved,North
+

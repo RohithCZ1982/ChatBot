@@ -38,19 +38,30 @@ Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=O
 
 def load_plots_data():
     """
-    Load the plots CSV data into a pandas DataFrame.
+    Load the plots Excel data into a pandas DataFrame.
     Returns the DataFrame for querying.
     """
-    csv_path = Path("data/plots.csv")
-    if not csv_path.exists():
-        st.error(f"❌ plots.csv not found at {csv_path}")
+    # Try different Excel file extensions
+    excel_paths = [
+        Path("data/plots.xlsx"),
+        Path("data/plots.xls"),
+    ]
+    
+    excel_path = None
+    for path in excel_paths:
+        if path.exists():
+            excel_path = path
+            break
+    
+    if excel_path is None:
+        st.error(f"❌ Excel file not found. Please add plots.xlsx or plots.xls to the data folder")
         return pd.DataFrame()
     
     try:
-        df = pd.read_csv(csv_path)
+        df = pd.read_excel(excel_path)
         return df
     except Exception as e:
-        st.error(f"❌ Error loading plots.csv: {str(e)}")
+        st.error(f"❌ Error loading Excel file {excel_path}: {str(e)}")
         return pd.DataFrame()
 
 
@@ -125,44 +136,78 @@ def query_plots(
     return "\n".join(result_lines)
 
 
-@st.cache_resource
+# PDF reading functionality is commented out - using Excel files only
+# @st.cache_resource
+# def initialize_rag_engine():
+#     """
+#     Initialize the RAG engine with PDF documents and create the vector index.
+#     This function is cached to prevent reloading on every interaction.
+#     """
+#     data_dir = Path("data")
+#     pdf_dir = data_dir / "pdfs"
+#     
+#     # Create pdfs directory if it doesn't exist
+#     pdf_dir.mkdir(parents=True, exist_ok=True)
+#     
+#     # Check if PDFs exist
+#     pdf_files = list(pdf_dir.glob("*.pdf"))
+#     
+#     if not pdf_files:
+#         st.warning(
+#             f"⚠️ No PDF files found in {pdf_dir}. "
+#             "Please add PDF brochures to the data/pdfs folder for document-based queries."
+#         )
+#         # Return None if no PDFs, agent will still work with CSV tool
+#         return None, None
+#     
+#     try:
+#         # Load PDF documents
+#         documents = SimpleDirectoryReader(str(pdf_dir)).load_data()
+#         
+#         # Create vector index
+#         index = VectorStoreIndex.from_documents(documents)
+#         
+#         # Create query engine
+#         query_engine = index.as_query_engine(similarity_top_k=3)
+#         
+#         return index, query_engine
+#     
+#     except Exception as e:
+#         error_str = str(e)
+#         # Check for specific OpenAI API errors
+#         if "insufficient_quota" in error_str or "429" in error_str:
+#             st.error("❌ **OpenAI API Quota Exceeded**")
+#             st.warning("""
+#             **Your OpenAI account has insufficient quota/credits.**
+#             
+#             **To fix this:**
+#             1. Check your billing: https://platform.openai.com/account/billing
+#             2. Add payment method if needed
+#             3. Check usage limits: https://platform.openai.com/usage
+#             4. Verify you have available credits
+#             
+#             **Note:** The app can still work with plot queries (CSV data) without PDFs.
+#             """)
+#         elif "invalid_api_key" in error_str or "401" in error_str:
+#             st.error("❌ **Invalid OpenAI API Key**")
+#             st.warning("""
+#             **Your API key is invalid or expired.**
+#             
+#             **To fix this:**
+#             1. Get a new key: https://platform.openai.com/api-keys
+#             2. Update your .env file or Colab notebook
+#             3. Make sure the key starts with 'sk-proj-' or 'sk-'
+#             """)
+#         else:
+#             st.error(f"❌ Error initializing RAG engine: {error_str}")
+#         return None, None
+
 def initialize_rag_engine():
     """
-    Initialize the RAG engine with PDF documents and create the vector index.
-    This function is cached to prevent reloading on every interaction.
+    PDF reading is disabled - returning None.
+    App now uses Excel files only.
     """
-    data_dir = Path("data")
-    pdf_dir = data_dir / "pdfs"
-    
-    # Create pdfs directory if it doesn't exist
-    pdf_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Check if PDFs exist
-    pdf_files = list(pdf_dir.glob("*.pdf"))
-    
-    if not pdf_files:
-        st.warning(
-            f"⚠️ No PDF files found in {pdf_dir}. "
-            "Please add PDF brochures to the data/pdfs folder for document-based queries."
-        )
-        # Return None if no PDFs, agent will still work with CSV tool
-        return None, None
-    
-    try:
-        # Load PDF documents
-        documents = SimpleDirectoryReader(str(pdf_dir)).load_data()
-        
-        # Create vector index
-        index = VectorStoreIndex.from_documents(documents)
-        
-        # Create query engine
-        query_engine = index.as_query_engine(similarity_top_k=3)
-        
-        return index, query_engine
-    
-    except Exception as e:
-        st.error(f"❌ Error initializing RAG engine: {str(e)}")
-        return None, None
+    return None, None
 
 
 def initialize_agent(query_engine):
@@ -173,11 +218,9 @@ def initialize_agent(query_engine):
         # System prompt for the agent
         system_prompt = (
             "You are a friendly Sales Consultant for a premium Land Developer. "
-            "Answer questions about amenities, landscape, maintenance, and developer history "
-            "using the brochure/document search tool. "
-            "Check for plot availability, pricing, and details using the plot query tool. "
+            "Answer questions about plot availability, pricing, and details using the plot query tool. "
             "Always be polite and professional. "
-            "If you use the CSV/plot tool, format the price nicely with currency symbols. "
+            "Format the price nicely with currency symbols. "
             "If a plot is not found, suggest checking available plot IDs. "
             "Provide helpful and accurate information to assist potential buyers."
         )
@@ -200,24 +243,26 @@ def initialize_agent(query_engine):
         
         tools = [plots_tool]
         
-        # Add PDF query tool if query engine is available
-        if query_engine is not None:
-            from llama_index.core.tools import QueryEngineTool
-            
-            pdf_tool = QueryEngineTool.from_defaults(
-                query_engine=query_engine,
-                name="brochure_search",
-                description=(
-                    "Search through property brochures and documents for information about "
-                    "amenities, landscape features, maintenance policies, developer history, "
-                    "and general property information. Use this for questions about what the "
-                    "development offers, facilities, and background information."
-                )
-            )
-            tools.append(pdf_tool)
+        # PDF query tool is commented out - using Excel files only
+        # if query_engine is not None:
+        #     from llama_index.core.tools import QueryEngineTool
+        #     
+        #     pdf_tool = QueryEngineTool.from_defaults(
+        #         query_engine=query_engine,
+        #         name="brochure_search",
+        #         description=(
+        #             "Search through property brochures and documents for information about "
+        #             "amenities, landscape features, maintenance policies, developer history, "
+        #             "and general property information. Use this for questions about what the "
+        #             "development offers, facilities, and background information."
+        #         )
+        #     )
+        #     tools.append(pdf_tool)
         
         # Create the agent
-        agent = ReActAgent.from_tools(
+        # Note: ReActAgent constructor syntax for LlamaIndex v0.10+
+        # If this fails, the error will be caught and shown to user
+        agent = ReActAgent(
             tools=tools,
             llm=Settings.llm,
             system_prompt=system_prompt,
@@ -264,15 +309,14 @@ def main():
         
         st.markdown("""
         **Available Features:**
-        - 📄 Query property brochures (amenities, landscape, etc.)
-        - 📊 Check plot availability and pricing
+        - 📊 Check plot availability and pricing from Excel file
         - 🔍 Search by Plot ID, status, price range, or facing
         
         **Sample Questions:**
         - "What plots are available?"
         - "Tell me about PLT-001"
-        - "What amenities are available?"
         - "Show me plots under ₹1,500,000"
+        - "Find available plots facing North"
         """)
         
         st.divider()
@@ -283,30 +327,50 @@ def main():
         if not df.empty:
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
-            st.warning("No plot data loaded")
+            st.warning("No plot data loaded. Please add plots.xlsx or plots.xls to the data folder")
         
         st.divider()
         
-        # PDF upload section (optional)
-        st.subheader("📄 Upload PDFs")
-        uploaded_files = st.file_uploader(
-            "Upload brochure PDFs",
-            type=["pdf"],
-            accept_multiple_files=True,
-            help="Upload PDF files to add to the knowledge base"
+        # Excel file upload section
+        st.subheader("📊 Upload Excel File")
+        uploaded_file = st.file_uploader(
+            "Upload plots Excel file",
+            type=["xlsx", "xls"],
+            help="Upload Excel file (plots.xlsx or plots.xls) with plot data"
         )
         
-        if uploaded_files:
-            pdf_dir = Path("data/pdfs")
-            pdf_dir.mkdir(parents=True, exist_ok=True)
+        if uploaded_file:
+            excel_dir = Path("data")
+            excel_dir.mkdir(parents=True, exist_ok=True)
             
-            for uploaded_file in uploaded_files:
-                file_path = pdf_dir / uploaded_file.name
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
+            # Save as plots.xlsx
+            file_path = excel_dir / "plots.xlsx"
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
             
-            st.success(f"✅ Uploaded {len(uploaded_files)} file(s)")
-            st.info("🔄 Please refresh the page to reload the RAG engine with new documents")
+            st.success(f"✅ Uploaded {uploaded_file.name}")
+            st.info("🔄 Please refresh the page to reload the data")
+        
+        # PDF upload section is commented out - using Excel files only
+        # st.subheader("📄 Upload PDFs")
+        # uploaded_files = st.file_uploader(
+        #     "Upload brochure PDFs",
+        #     type=["pdf"],
+        #     accept_multiple_files=True,
+        #     help="Upload PDF files to add to the knowledge base"
+        # )
+        # 
+        # if uploaded_files:
+        #     pdf_dir = Path("data/pdfs")
+        #     pdf_dir.mkdir(parents=True, exist_ok=True)
+        #     
+        #     for uploaded_file in uploaded_files:
+        #         file_path = pdf_dir / uploaded_file.name
+        #         with open(file_path, "wb") as f:
+        #             f.write(uploaded_file.getbuffer())
+        #     
+        #     st.success(f"✅ Uploaded {len(uploaded_files)} file(s)")
+        #     st.info("🔄 Please refresh the page to reload the RAG engine with new documents")
     
     # Initialize session state for chat history
     if "messages" not in st.session_state:
@@ -318,9 +382,10 @@ def main():
     
     # Initialize session state for agent (cached)
     if "agent" not in st.session_state:
-        with st.spinner("🔄 Initializing RAG engine..."):
+        with st.spinner("🔄 Initializing agent..."):
             try:
-                index, query_engine = initialize_rag_engine()
+                # PDF RAG engine is disabled - using Excel files only
+                index, query_engine = initialize_rag_engine()  # Returns None, None
                 agent = initialize_agent(query_engine)
                 if agent is None:
                     st.error("❌ Failed to initialize agent. Please check the error messages above.")
@@ -345,8 +410,7 @@ def main():
             I can assist you with:
             - 📊 **Plot Availability** - Check which plots are available
             - 💰 **Pricing Information** - Get details on plot prices
-            - 📄 **Property Details** - Learn about amenities and features
-            - 🔍 **Custom Queries** - Ask me anything about the properties
+            - 🔍 **Custom Queries** - Ask me anything about the plots
             """)
             
             # Quick action buttons
@@ -362,8 +426,8 @@ def main():
                     quick_prompt = "Show me all plot prices"
             
             with col2:
-                if st.button("🏠 Tell me about amenities", use_container_width=True, key="btn_amenities"):
-                    quick_prompt = "What amenities are available?"
+                if st.button("🔍 Find by status", use_container_width=True, key="btn_status"):
+                    quick_prompt = "Show me all available plots"
                 if st.button("🔍 Find plots by price", use_container_width=True, key="btn_price_filter"):
                     quick_prompt = "Show me plots under ₹1,500,000"
             
@@ -397,10 +461,33 @@ def main():
                             st.session_state.messages.append({"role": "assistant", "content": "❌ Agent not initialized. Please refresh the page."})
                             st.session_state.processed_count = len(st.session_state.messages)
                         else:
-                            response = st.session_state.agent.chat(user_message)
-                            st.markdown(str(response))
-                            st.session_state.messages.append({"role": "assistant", "content": str(response)})
-                            st.session_state.processed_count = len(st.session_state.messages)
+                            # ReActAgent uses query() method, not chat()
+                            # Try both methods for compatibility
+                            try:
+                                if hasattr(st.session_state.agent, 'chat'):
+                                    response = st.session_state.agent.chat(user_message)
+                                elif hasattr(st.session_state.agent, 'query'):
+                                    response = st.session_state.agent.query(user_message)
+                                else:
+                                    # Fallback: try calling directly
+                                    response = st.session_state.agent(user_message)
+                                
+                                # Extract response text if it's a response object
+                                if hasattr(response, 'response'):
+                                    response_text = str(response.response)
+                                elif hasattr(response, 'source_nodes'):
+                                    response_text = str(response)
+                                else:
+                                    response_text = str(response)
+                                
+                                st.markdown(response_text)
+                                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                                st.session_state.processed_count = len(st.session_state.messages)
+                            except AttributeError as ae:
+                                error_msg = f"❌ Agent method error: {str(ae)}. Available methods: {dir(st.session_state.agent)}"
+                                st.error(error_msg)
+                                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                                st.session_state.processed_count = len(st.session_state.messages)
                     except Exception as e:
                         error_msg = f"❌ Error: {str(e)}"
                         st.error(error_msg)
