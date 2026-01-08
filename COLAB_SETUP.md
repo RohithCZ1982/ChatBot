@@ -113,10 +113,24 @@ print(f"🌐 Public URL: {public_url}")
 
 ## Troubleshooting
 
+### Dependency Conflicts
+
+If you see dependency conflict errors (like `jedi>=0.16` not installed):
+
+1. **The notebook already includes the fix** - `jedi>=0.16` is installed first
+2. **If issues persist**, try installing all packages together:
+   ```python
+   !pip install -q --upgrade pip jedi>=0.16 streamlit llama-index llama-index-llms-openai llama-index-embeddings-openai openai pandas python-dotenv pypdf pyngrok
+   ```
+3. **Ignore warnings** - Some dependency warnings are harmless and won't affect functionality
+
+### Other Issues
+
 - **"app.py not found":** Make sure you uploaded the file in Step 5
 - **"Port already in use":** Run the stop cell first, then restart
 - **"Ngrok connection failed":** Check your internet connection
 - **"OpenAI API error":** Verify your API key is correct and has credits
+- **"Import errors":** Restart the runtime (Runtime > Restart runtime) and run all cells again
 
 ## Using Colab Secrets (Recommended)
 
