@@ -1,0 +1,9 @@
+streamlit>=1.28.0
+llama-index>=0.10.0
+llama-index-llms-openai>=0.1.0
+llama-index-embeddings-openai>=0.1.0
+openai>=1.0.0
+pandas>=2.0.0
+python-dotenv>=1.0.0
+pypdf>=3.0.0
+pyngrok>=5.0.0
