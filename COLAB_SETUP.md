@@ -28,7 +28,35 @@ Creates the necessary directories (`data/pdfs`).
 Generates the `plots.csv` file with sample plot data.
 
 ### Step 4: Set OpenAI API Key
-**⚠️ IMPORTANT:** Replace `"your_openai_api_key_here"` with your actual OpenAI API key.
+
+**How to get your OpenAI API Key:**
+
+1. **Visit OpenAI Platform:**
+   - Go to: https://platform.openai.com/api-keys
+   - Or navigate: https://platform.openai.com → API keys
+
+2. **Sign up or Log in:**
+   - Create a new account if you don't have one
+   - Or log in with your existing account
+
+3. **Create a new API key:**
+   - Click **"Create new secret key"** button
+   - Give it a name (e.g., "Colab Chatbot")
+   - Click **"Create secret key"**
+
+4. **Copy the key:**
+   - ⚠️ **IMPORTANT:** Copy the key immediately - you won't be able to see it again!
+   - The key looks like: `sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+
+5. **Paste in the notebook:**
+   - Replace `"your_openai_api_key_here"` in Step 4 with your actual key
+   - Keep the quotes around it
+
+**⚠️ Security Notes:**
+- Never share your API key publicly
+- Don't commit it to GitHub or public repositories
+- You can revoke and create new keys anytime from the OpenAI dashboard
+- API keys have usage limits based on your OpenAI plan
 
 ### Step 5: Upload app.py
 You have two options:
@@ -38,13 +66,19 @@ You have two options:
 ### Step 6: (Optional) Upload PDFs
 Upload PDF brochures if you want to query document-based information.
 
-### Step 7: Run Streamlit with ngrok
+### Step 7: Set Up ngrok Authtoken
+**⚠️ REQUIRED:** ngrok requires a free account and authtoken:
+1. Sign up at: https://dashboard.ngrok.com/signup (free)
+2. Get your authtoken: https://dashboard.ngrok.com/get-started/your-authtoken
+3. Paste it in Step 7 cell, replacing `your_ngrok_authtoken_here`
+
+### Step 8: Run Streamlit with ngrok
 This cell:
 - Starts an ngrok tunnel to expose your Streamlit app
 - Provides a public URL you can access from anywhere
 - Runs Streamlit in the background
 
-### Step 8: Stop the App
+### Step 9: Stop the App
 When you're done, run this cell to:
 - Stop the Streamlit process
 - Close the ngrok tunnel
@@ -128,6 +162,10 @@ If you see dependency conflict errors (like `jedi>=0.16` not installed):
 
 - **"app.py not found":** Make sure you uploaded the file in Step 5
 - **"Port already in use":** Run the stop cell first, then restart
+- **"Ngrok authentication failed":** 
+  - Make sure you've set up your ngrok authtoken in Step 7
+  - Get your authtoken from: https://dashboard.ngrok.com/get-started/your-authtoken
+  - Sign up for free at: https://dashboard.ngrok.com/signup if you haven't
 - **"Ngrok connection failed":** Check your internet connection
 - **"OpenAI API error":** Verify your API key is correct and has credits
 - **"Import errors":** Restart the runtime (Runtime > Restart runtime) and run all cells again

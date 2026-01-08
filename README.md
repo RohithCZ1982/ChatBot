@@ -53,6 +53,8 @@ A sophisticated Real Estate Chatbot built with **LlamaIndex RAG**, **OpenAI GPT-
      ```
      OPENAI_API_KEY=your_openai_api_key_here
      ```
+   - **Don't have an API key?** See `HOW_TO_GET_API_KEY.md` for detailed instructions
+   - Quick steps: Go to https://platform.openai.com/api-keys → Create new secret key
 
 5. **Prepare data files:**
    - The `data/plots.csv` file is already created with sample data
