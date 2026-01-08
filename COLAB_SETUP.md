@@ -167,6 +167,12 @@ If you see dependency conflict errors (like `jedi>=0.16` not installed):
   - Get your authtoken from: https://dashboard.ngrok.com/get-started/your-authtoken
   - Sign up for free at: https://dashboard.ngrok.com/signup if you haven't
 - **"Ngrok connection failed":** Check your internet connection
+- **"Invalid API Key" or "invalid_api_key" error:**
+  - Make sure you replaced `"your_openai_api_key_here"` with your actual key
+  - Verify the key starts with `sk-proj-` or `sk-`
+  - Check that there are no extra spaces
+  - Get a new key from: https://platform.openai.com/api-keys if needed
+  - See `TROUBLESHOOTING.md` for detailed help
 - **"OpenAI API error":** Verify your API key is correct and has credits
 - **"Import errors":** Restart the runtime (Runtime > Restart runtime) and run all cells again
 

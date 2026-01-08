@@ -165,67 +165,73 @@ def initialize_rag_engine():
         return None, None
 
 
-@st.cache_resource
-def initialize_agent(_query_engine):
+def initialize_agent(query_engine):
     """
     Initialize the ReActAgent with tools for both PDF queries and CSV queries.
-    This function is cached to prevent reloading on every interaction.
     """
-    # System prompt for the agent
-    system_prompt = (
-        "You are a friendly Sales Consultant for a premium Land Developer. "
-        "Answer questions about amenities, landscape, maintenance, and developer history "
-        "using the brochure/document search tool. "
-        "Check for plot availability, pricing, and details using the plot query tool. "
-        "Always be polite and professional. "
-        "If you use the CSV/plot tool, format the price nicely with currency symbols. "
-        "If a plot is not found, suggest checking available plot IDs. "
-        "Provide helpful and accurate information to assist potential buyers."
-    )
-    
-    # Create the CSV query tool
-    plots_tool = FunctionTool.from_defaults(
-        fn=query_plots,
-        name="query_plots",
-        description=(
-            "Query plot availability and pricing information from the plots database. "
-            "Use this tool to: "
-            "- Find plots by Plot ID (e.g., 'PLT-001') "
-            "- Find available plots (use available_only=True) "
-            "- Filter by status (Available, Sold, Reserved) "
-            "- Filter by price range (min_price, max_price) "
-            "- Filter by facing direction (North, South, East, West) "
-            "Returns formatted plot information with ID, area, price, status, and facing."
+    try:
+        # System prompt for the agent
+        system_prompt = (
+            "You are a friendly Sales Consultant for a premium Land Developer. "
+            "Answer questions about amenities, landscape, maintenance, and developer history "
+            "using the brochure/document search tool. "
+            "Check for plot availability, pricing, and details using the plot query tool. "
+            "Always be polite and professional. "
+            "If you use the CSV/plot tool, format the price nicely with currency symbols. "
+            "If a plot is not found, suggest checking available plot IDs. "
+            "Provide helpful and accurate information to assist potential buyers."
         )
-    )
-    
-    tools = [plots_tool]
-    
-    # Add PDF query tool if query engine is available
-    if _query_engine is not None:
-        from llama_index.core.tools import QueryEngineTool
         
-        pdf_tool = QueryEngineTool.from_defaults(
-            query_engine=_query_engine,
-            name="brochure_search",
+        # Create the CSV query tool
+        plots_tool = FunctionTool.from_defaults(
+            fn=query_plots,
+            name="query_plots",
             description=(
-                "Search through property brochures and documents for information about "
-                "amenities, landscape features, maintenance policies, developer history, "
-                "and general property information. Use this for questions about what the "
-                "development offers, facilities, and background information."
+                "Query plot availability and pricing information from the plots database. "
+                "Use this tool to: "
+                "- Find plots by Plot ID (e.g., 'PLT-001') "
+                "- Find available plots (use available_only=True) "
+                "- Filter by status (Available, Sold, Reserved) "
+                "- Filter by price range (min_price, max_price) "
+                "- Filter by facing direction (North, South, East, West) "
+                "Returns formatted plot information with ID, area, price, status, and facing."
             )
         )
-        tools.append(pdf_tool)
+        
+        tools = [plots_tool]
+        
+        # Add PDF query tool if query engine is available
+        if query_engine is not None:
+            from llama_index.core.tools import QueryEngineTool
+            
+            pdf_tool = QueryEngineTool.from_defaults(
+                query_engine=query_engine,
+                name="brochure_search",
+                description=(
+                    "Search through property brochures and documents for information about "
+                    "amenities, landscape features, maintenance policies, developer history, "
+                    "and general property information. Use this for questions about what the "
+                    "development offers, facilities, and background information."
+                )
+            )
+            tools.append(pdf_tool)
+        
+        # Create the agent
+        agent = ReActAgent.from_tools(
+            tools=tools,
+            llm=Settings.llm,
+            system_prompt=system_prompt,
+            verbose=True
+        )
+        
+        return agent
     
-    # Create the agent
-    agent = ReActAgent.from_tools(
-        tools=tools,
-        llm=Settings.llm,
-        system_prompt=system_prompt,
-        verbose=True
-    )
-    
-    return agent
+    except Exception as e:
+        st.error(f"❌ Error initializing agent: {str(e)}")
+        st.error(f"Error type: {type(e).__name__}")
+        import traceback
+        st.code(traceback.format_exc())
+        return None
 
 
 def main():
@@ -313,9 +319,19 @@ def main():
     # Initialize session state for agent (cached)
     if "agent" not in st.session_state:
         with st.spinner("🔄 Initializing RAG engine..."):
-            index, query_engine = initialize_rag_engine()
-            st.session_state.agent = initialize_agent(query_engine)
-            st.session_state.query_engine = query_engine
+            try:
+                index, query_engine = initialize_rag_engine()
+                agent = initialize_agent(query_engine)
+                if agent is None:
+                    st.error("❌ Failed to initialize agent. Please check the error messages above.")
+                    st.stop()
+                st.session_state.agent = agent
+                st.session_state.query_engine = query_engine
+            except Exception as e:
+                st.error(f"❌ Error during initialization: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc())
+                st.stop()
     
     # Main chat container
     chat_container = st.container()
@@ -376,13 +392,20 @@ def main():
             with st.chat_message("assistant"):
                 with st.spinner("🤔 Thinking..."):
                     try:
-                        response = st.session_state.agent.chat(user_message)
-                        st.markdown(str(response))
-                        st.session_state.messages.append({"role": "assistant", "content": str(response)})
-                        st.session_state.processed_count = len(st.session_state.messages)
+                        if "agent" not in st.session_state or st.session_state.agent is None:
+                            st.error("❌ Agent not initialized. Please refresh the page.")
+                            st.session_state.messages.append({"role": "assistant", "content": "❌ Agent not initialized. Please refresh the page."})
+                            st.session_state.processed_count = len(st.session_state.messages)
+                        else:
+                            response = st.session_state.agent.chat(user_message)
+                            st.markdown(str(response))
+                            st.session_state.messages.append({"role": "assistant", "content": str(response)})
+                            st.session_state.processed_count = len(st.session_state.messages)
                     except Exception as e:
                         error_msg = f"❌ Error: {str(e)}"
                         st.error(error_msg)
+                        import traceback
+                        st.code(traceback.format_exc())
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
                         st.session_state.processed_count = len(st.session_state.messages)
 
